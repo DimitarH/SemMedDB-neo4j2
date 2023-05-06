@@ -1,0 +1,188 @@
+== The graph data model for SemMedDB31
+
+A Neo4j graph database contains nodes and relations between the nodes. Both the nodes and relations can have properties/attributes. Here the node types (labels) and relations used in the SemMedDB31 graph data model are described.
+
+image::https://i.imgur.com/hXaShYl.png[]
+
+== Graph schema
+=== Node types (labels)
+In Neo4j, labels can be assigned to nodes as a way to designate the node type. More than one label can be assigned to a node. These node labels are used in the SemMedDB31 graph data model:
+
+* Citation. Corresponds to a line in the CITATION table in the MySQL SemMedDB31 distribution.
+* Sentence. Corresponds to a line in the SENTENCE table in the MySQL distribution.
+* Instance. Means “semantic relation instance” and corresponds to a subset of a line produced by joining the PREDICATE and PREDICATE_AUX tables in the MySQL distribution. Some of the data is stored as properties of the relations: Extracted_From, Inst_Subject, and Inst_Object (for more information see below).
+* Concept. UMLS concepts that represent the arguments of both semantic relation instances and aggregated semantic relations. The nodes with label “Concept” also have at least one additional label for the corresponding abbreviated UMLS semantic type (e.g. “phsu”, or “dsyn”). 
+* Entity. Corresponds to the ENTITY table in the MySQL distribution.
+
+
+=== Relations
+These are the relations used in the SemMedDB31 graph data model:
+
+* IS_IN - a relation between a sentence and a citation.  In Cypher: (sent:Sentence)-[:IS_IN]->(cit:Citation). This is only the relation specification part of a Cypher query, not a complete query. For complete queries, see below.
+* Extracted_From - a relation between a predication instance and a sentence. In Cypher: (inst:Instance)-[:Extracted_From]->(sent:Sentence).
+* Inst_Subject - A relation between an instance and the concept which is the subject of that Instance.
+* Inst_Object - A relation between an instance and the concept which is the object of that Instance. In Cypher: (sub:Concept)<-[r_sub:Inst_Subject]-(inst:Instance)-[r_obj:Inst_Object]->(obj:Concept)
+* All the SemRep semantic relations (predicates) e.g. INHIBITS, TREATS, ... Aggregated relations between Concept nodes. For example, there is only one INHIBITS relation between a particular Concept1 and Concept2, but there can be many instances of that relation (Instance nodes). The instances basically represent a hyper-edge (a relation between more than two nodes - in this case, a relation between the subject, the object, and the sentence from which the instance is extracted). However, since Neo4j supports only binary relations, the most common approach to hyper-edges is to represent them as nodes with links to as many other nodes as necessary.
+
+
+== Example Cypher queries
+Here we show a few typical Cypher queries that query the SemMedDB graph database. Cypher is a query language used in Neo4j. For general Neo4j Cypher help, please see the Neo4j Cypher documentation. 
+
+Find any 20 Citations (nodes with label Citation):
+
+[source,cypher]
+----
+match (cit:Citation) 
+return cit
+limit 20;
+----
+
+... where pmid = "1" ("pmid" is varchar in mySQL version of SemMedDB):
+
+[source,cypher]
+----
+match (cit:Citation) 
+where cit.pmid="1" 
+return cit;
+----
+
+... where publication year is 1990:
+
+[source,cypher]
+----
+match (cit:Citation) 
+where cit.pyear=1990 
+return cit 
+limit 20;
+----
+
+... another way to specify conditions on a node property (the same query as above):
+
+[source,cypher]
+----
+match (cit:Citation {pyear: 1990}) 
+return cit 
+limit 20;
+----
+
+... also find and return the sentences from the citations found above:
+
+[source,cypher]
+----
+match (cit:Citation {pyear: 1990})<-[r_in:IS_IN]-(sent:Sentence) 
+return cit,r_in,sent 
+limit 20;
+----
+
+... also find and return the predicate instances from the sentences above:
+
+[source,cypher]
+----
+match (cit:Citation {pyear: 1990})<-[r_in:IS_IN]-(sent:Sentence)<-[r_extr:Extracted_From]-(inst:Instance) 
+return cit,r_in,sent,r_extr,inst 
+limit 20;
+----
+
+... also find the subjects and objects of the instances. Some relations (e.g. r_sub, r_obj also have properties).
+
+[source,cypher]
+----
+match (cit:Citation {pyear: 1990})<-[r_in:IS_IN]-(sent:Sentence)<-[r_extr:Extracted_From]-(inst:Instance), 
+      (sub:Concept)<-[r_sub:Inst_Subject]-(inst)-[r_obj:Inst_Object]->(obj:Concept) 
+return cit,r_in,sent,r_extr,inst,r_sub,sub,r_obj,obj 
+limit 20;
+----
+
+You do not have to go from Citation to Concept. You can start anywhere. For example, for some Instances, show the subjects and the objects:
+
+[source,cypher]
+----
+match (sub:Concept)<-[r_sub:Inst_Subject]-(inst:Instance)-[r_obj:Inst_Object]->(obj:Concept) 
+return inst,r_sub,sub,r_obj,obj 
+limit 20;
+----
+
+For some aggregated predications (direct relations between two Concept nodes), show the corresponding predication instances:
+
+[source,cypher]
+----
+match (sub:Concept)-[rel]->(obj:Concept), 
+      (sub)<-[r_sub:Inst_Subject]-(inst:Instance)-[r_obj:Inst_Object]->(obj) 
+where inst.predicate=type(rel) 
+return rel,type(rel),inst,r_sub,sub,r_obj,obj
+limit 20;
+----
+
+... more specific than above. Here we are interested in INHIBITS relations where a phsu (pharmacological substance) INHIBITS a gngm (gene or genome):
+
+[source,cypher]
+----
+match (sub:Concept:phsu)-[rel:INHIBITS]->(obj:Concept:gngm), 
+      (sub)<-[r_sub:Inst_Subject]-(inst:Instance)-[r_obj:Inst_Object]->(obj) 
+where inst.predicate=type(rel) 
+return rel,type(rel),inst,r_sub,sub,r_obj,obj 
+limit 20;
+----
+
+Currently a most generic query returning linked Citation to Sentence to Instance to (Subject and Object), and corresponding aggregated semantic relations:
+
+[source,cypher]
+----
+match (c:Citation)<-[r_in:IS_IN]-(s:Sentence)<-[r_extr:Extracted_From]-(i:Instance)-[r_sub:Inst_Subject]->(sub:Concept), 
+      (i)-[r_obj:Inst_Object]->(obj:Concept), (sub)-[rel]->(obj) 
+return c,r_in,s,r_extr,i,r_sub,sub,r_obj,obj, rel 
+limit 100;
+----
+
+== Creating constraints and indexes
+In Neo4j, indexes are automatically created for each node label and relation type. But, based on the intended use of the graph database, some additional constraints and indexes might need to be manually created to speed up Cypher queries and other operations. This is especially true for queries that reference node and/or relation attributes. In the SemMedDB31 distribution as a Neo4j dump file, two full-text indexes are automatically created. When using the delimited text files, these indexes should be created manually. These indexes are for illustrational purposes and might not be appropriate for every application scenario:
+
+
+In Neo4j, create a full-text index on nodes with label "Concept" on attribute "name"
+[source,cypher]
+----
+CALL db.index.fulltext.createNodeIndex("Concept",["Concept"],["name"]);
+----
+==== Example usage:
+[source,cypher]
+----
+CALL db.index.fulltext.queryNodes("Concept", "Surface") YIELD node, score;
+----
+
+In Neo4j, create full-text index on nodes with label "Sentence" on attributes "sentence","type","normalized_section_header","sentence_header"
+[source,cypher]
+----
+CALL db.index.fulltext.createNodeIndex("Sentence",["Sentence"],["sentence","type","normalized_section_header","sentence_header"]);
+----
+==== Example usage:
+Search for "sclerosis" anywhere in a "Sentence" node
+[source,cypher]
+----
+CALL db.index.fulltext.queryNodes("Sentence","sclerosis") 
+YIELD node, score
+return node.sentence,score;
+----
+Search for "sclerosis" only in the text of a sentence
+[source,cypher]
+----
+CALL db.index.fulltext.queryNodes("Sentence","sentence:sclerosis")
+YIELD node, score
+return node.sentence,score;
+----
+Search for "sclerosis" in the text of title sentences only
+[source,cypher]
+----
+CALL db.index.fulltext.queryNodes("Sentence","sentence:sclerosis AND type:TI") 
+YIELD node, score 
+return node.sentence,score;
+----
+Search for "sclerosis" in the text of abstract sentences only
+[source,cypher]
+----
+CALL db.index.fulltext.queryNodes("Sentence","sentence:sclerosis AND type:AB")
+YIELD node, score
+return node.sentence,score;
+----
+The graph data model for SemMedDB31
+A Neo4j graph database contains nodes and relations between the nodes. Both the nodes and relations can have properties/attributes. Here the node types (labels) and relations used in the SemMedDB31 graph data model are described.
+

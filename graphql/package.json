@@ -1,0 +1,18 @@
+{
+  "name": "graphql",
+  "version": "1.0.0",
+  "description": "",
+  "main": "graphql.js",
+  "dependencies": {
+    "@neo4j/graphql": "^3.2.0",
+    "apollo-server": "^3.7.0",
+    "neo4j-driver": "^4.4.5"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node --max_old_space_size=8192 graphql.js"
+  },
+  "author": "",
+  "license": "ISC"
+}

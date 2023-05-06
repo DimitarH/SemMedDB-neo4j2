@@ -1,0 +1,66 @@
+version: '3.7'
+services:
+  neo4j:
+    image: neo4j:4.4.5-enterprise
+    restart: always
+    hostname: neo4j
+    container_name: semmeddb-neo4j
+    ports:
+      - 7474:7474
+      - 7687:7687
+    volumes:
+      - ./neo4j/data:/data
+      - ./neo4j/import:/import
+      - ./neo4j/backup:/backup
+      - ./neo4j/conf:/conf
+      - ./neo4j/plugins:/plugins
+    environment:
+      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
+      - NEO4J_AUTH=neo4j/semMedDb2020
+      - NEO4J_dbms_connector_bolt_advertised__address=212.235.239.171
+      - NEO4J_browser_remote__content__hostname__whitelist=http://212.235.239.171,212.235.239.171
+      - NEO4J_browser_post__connect__cmd=play http://212.235.239.171/semMedGuide.html
+      - NEO4JLABS_PLUGINS=["apoc"]
+      - NEO4J_dbms_default__database=semmed432202
+
+  browser-http:
+    build:
+      context: ./browser
+    hostname: browser-host
+    restart: always
+    container_name: browser-host
+    ports:
+      - 8000:8000
+  nginx: 
+    image: nginx:latest
+    restart: always
+    container_name: production_nginx
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./nginx:/etc/nginx/conf.d 
+  graphql: 
+    build:
+      context: ./graphql
+    restart: always
+    container_name: graphql
+    ports:
+      - 64010:4000
+    depends_on:
+      - neo4j
+    links:
+      - neo4j
+  dxreact: 
+    build:
+      context: ./dxReactClient
+    restart: always
+    container_name: dxreact
+    ports:
+      - 64023:3000
+    depends_on:
+      - neo4j
+    links:
+      - neo4j 
+
+

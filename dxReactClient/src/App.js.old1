@@ -1,0 +1,80 @@
+// Powered by DevExtreme React Components. See https://www.npmjs.com/package/devextreme-react
+//import react, {useState} from 'react'
+import Button from '@material-ui/core/Button';
+import Container from '@material-ui/core/Container';
+import AppBar from '@material-ui/core/AppBar';
+import Toolbar from '@material-ui/core/Toolbar';
+import IconButton from '@material-ui/core/IconButton';
+import MenuIcon from '@material-ui/icons/Menu';
+import Grid from '@material-ui/core/Grid';
+import { makeStyles } from '@material-ui/core/styles';
+import { BrowserRouter as Router,Routes, Route } from "react-router-dom";
+//import Concepts from './Concepts';
+import ConceptsTable from './ConceptsTable';
+import ConceptsTableWhere from './ConceptsTableWhere';
+import ConceptsRelated from './ConceptsRelated';
+import ConceptsSelected from './ConceptsSelected';
+import { useState } from 'react';
+import ConceptsZRelated from './ConceptsZRelated';
+import PatientPheno from './PatientPheno';
+import ClosedDiscovery from './ClosedDiscovery';
+import ConceptsYRelated from './ConceptsYRelated'
+//import PatientPheno from './PatientPheno';
+ 
+ 
+const useStyles = makeStyles((theme) => ({
+  root: {
+    flexGrow: 1,
+  },
+  paper: {
+    padding: theme.spacing(3),
+    textAlign: 'center',
+    color: theme.palette.text.primary,
+  },
+}));
+
+function App()  {
+    const classes = useStyles();
+    const [concSel, setConcSel] = useState([]);
+    const [concSelRel, setConcSelRel] = useState([]) 
+    return (
+        
+      <div className={classes.root}>
+       
+        <Container maxWidth="lg">
+        <Grid container  spacing={2}>
+          <AppBar position="sticky" >
+            <Toolbar>
+              <IconButton>
+                  <MenuIcon />
+              </IconButton>
+              NGS-LBD
+              <Button>
+                Home
+              </Button>
+            </Toolbar>
+          </AppBar> 
+          <Grid item xl={12} lg={12} md={12} sm={12} xs={12} className={classes.paper}>
+          <Router>
+            <Routes>
+            <Route  path='/' exact element={<ConceptsTableWhere selection={concSel} setSelection={setConcSel} />} />
+            <Route  path='/pheno' exact element={<PatientPheno />} />
+            <Route  path='/related' exact element={<ConceptsRelated selection={concSel}/>} />
+            <Route  path='/table' exact element={<ConceptsTable selection={concSel}/>} />
+            <Route  path='/selected' exact element={<ConceptsSelected selection={concSel}/>} />
+            <Route  path='/zrelated' exact element={<ConceptsZRelated selection={concSel} selectionRelated={concSelRel} />} />
+            <Route  path='/closed' exact element={<ClosedDiscovery />} />
+            <Route  path='/yrelated' exact element={<ConceptsYRelated />} />
+            </Routes>
+          </Router>
+          
+          </Grid>          
+        </Grid>
+        </Container>
+       
+      </div>  
+    );   
+
+}
+export default App;
+

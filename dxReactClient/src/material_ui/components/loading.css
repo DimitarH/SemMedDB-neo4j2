@@ -1,0 +1,20 @@
+.loading-shading-mui {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin-right: -50%;
+  transform: translate(-50%, -50%);
+  
+    background: rgba(255, 255, 255, .3);
+  }
+  
+  .loading-icon-mui {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin-right: -50%;
+    font-size: 20px;
+    top: calc(45% - 10px);
+    left: calc(50% - 10px);
+  }
+  

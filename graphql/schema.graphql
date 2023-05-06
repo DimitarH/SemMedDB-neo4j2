@@ -1,0 +1,229 @@
+interface RelProperties @relationshipProperties {
+	freq: BigInt!
+	min_pyear: BigInt!
+}
+
+type Concept @node(label: "Concept") {
+	arg_inst_freq: BigInt!
+	arg_rel_freq: BigInt!
+	produces: [Concept!]! @relationship(type: "PRODUCES", direction: OUT, properties: "RelProperties")
+    affects: [Concept!]! @relationship(type: "AFFECTS", direction: OUT, properties: "RelProperties")
+	cui: String!
+	min_pyear: BigInt!
+	name: String!
+	obj_inst_freq: BigInt!
+	obj_rel_freq: BigInt!
+	sub_inst_freq: BigInt!
+	sub_rel_freq: BigInt!
+}
+
+type Concept2 @node(label: "Concept") {
+	arg_inst_freq: BigInt!
+	arg_rel_freq: BigInt!
+	cui: String!
+	min_pyear: BigInt!
+	name: String!
+	obj_inst_freq: BigInt!
+	obj_rel_freq: BigInt!
+	sub_inst_freq: BigInt!
+	sub_rel_freq: BigInt!
+}
+
+type RelatedConcept @node(label: "Concept") {
+	source_cui: String!
+	rel_type: String!
+	rel_freq: BigInt!
+	rel_min_pyear: BigInt!
+	stys: [String!]!
+	arg_inst_freq: BigInt!
+	arg_rel_freq: BigInt!
+	cui: String!
+	min_pyear: BigInt!
+	name: String!
+	obj_inst_freq: BigInt!
+	obj_rel_freq: BigInt!
+	sub_inst_freq: BigInt!
+	sub_rel_freq: BigInt!
+}
+
+type RelatedConceptY @node(label: "Concept") {
+		x_cui: String!
+		xy_rel_type: String!
+		xy_rel_freq: BigInt!
+		xy_rel_min_pyear: BigInt!
+		z_cui: String!
+		yz_rel_type: String!
+		yz_rel_freq: BigInt!
+		yz_rel_min_pyear: BigInt!	
+		stys: [String!]!
+		arg_inst_freq: BigInt!
+		arg_rel_freq: BigInt!
+		cui: String! 
+		min_pyear: BigInt!
+		name: String!
+		obj_inst_freq: BigInt!
+		obj_rel_freq: BigInt!
+		sub_inst_freq: BigInt!
+		sub_rel_freq: BigInt!
+}
+
+type RelatedConcept2 {
+	rel_type: String!
+	rel_freq: BigInt!
+	rel_min_pyear: BigInt!
+	related_concept: Concept2!
+}
+
+
+type Sentence {
+	instancesExtractedFrom: [Instance!]! @relationship(type: "Extracted_From", direction: IN)
+	isInCitations: [Citation!]! @relationship(type: "IS_IN", direction: OUT)
+	normalized_section_header: String!
+	number: BigInt!
+	section_header: String!
+	sent_end_index: BigInt!
+	sent_start_index: BigInt!
+	sentence: String!
+	sentence_id: String!
+	type: String!
+}
+
+type Instance {
+    extractedFromSentences: [Sentence!]! @relationship(type: "Extracted_From", direction: OUT)
+	indicator_type: String!
+    instance_id: String!
+	predicate: String!
+	predicate_end_index: BigInt!
+	predicate_start_index: BigInt!
+    sentence: [Sentence!]! @relationship(type: "Extracted_From", direction: OUT)
+    object: [Concept!]! @relationship(type: "Inst_Object", direction: OUT)
+    subject: [Concept!]! @relationship(type: "Inst_Subject", direction: OUT)
+}
+
+type Citation {
+	edat: String!
+	issn: String!
+	pmid: String!
+	pyear: BigInt!
+	sentencesIsIn: [Sentence!]! @relationship(type: "IS_IN", direction: IN)
+}
+
+type Query {
+  ConceptByName(searchString: String): [Concept] @cypher(
+    statement: """
+      CALL db.index.fulltext.queryNodes(
+        'ConceptName', $searchString + '*'
+      ) 
+      YIELD node RETURN node LIMIT 250
+    """
+  )
+
+  RelatedConcepts2(ConceptName: String): [RelatedConcept2] @cypher(
+	statement: """
+	  match(c:Concept)-[r]->(c2:Concept) 
+	  where c.name contains $ConceptName
+	  return {
+		rel_type: type(r),
+		rel_freq: r.freq,
+		rel_min_pyear: r.min_pyear,
+		related_concept: {
+			cui: c2.cui,
+			name: c2.name,
+			min_pyear: c2.min_pyear
+		}
+	  }
+	  """
+  )	
+
+ 
+  RelatedConceptsByCuiList(cui_list: [String!]!, offset: Int = 0, limit: Int = 10): [RelatedConcept] @cypher(
+	statement: """
+	  match(c:Concept)-[r]->(c2:Concept) 
+	  where c.cui in $cui_list
+	  return {
+		source_cui: c.cui,
+		rel_type: type(r),
+		rel_freq: r.freq,
+		rel_min_pyear: r.min_pyear,
+		stys: labels(c2),
+		arg_inst_freq: c2.arg_inst_freq,
+		arg_rel_freq: c2.arg_rel_freq,
+		cui: c2.cui, 
+		min_pyear: c2.min_pyear,
+		name: c2.name,
+		obj_inst_freq: c2.obj_inst_freq,
+		obj_rel_freq: c2.obj_rel_freq,
+		sub_inst_freq: c2.sub_inst_freq,
+		sub_rel_freq: c2.sub_rel_freq
+	  }
+	  skip $offset
+	  limit $limit
+	  """
+  )	
+
+RelatedConceptsByCuiListCount(cui_list: [String!]!): Int @cypher(
+	statement: """
+	  match(c:Concept)-[r]->(c2:Concept) 
+	  where c.cui in $cui_list
+	  return count(r)
+	  """
+  )
+
+  RelatedConceptsZbyCuiList(x_cui_list: [String!]!, y_cui_list: [String!]!, offset: Int = 0, limit: Int = 10): [RelatedConcept] @cypher(
+	statement: """
+	  match (c_x:Concept)-[r2]->(c:Concept)-[r]->(c2:Concept) 
+	  where c_x.cui in $x_cui_list
+	  		and c.cui in $y_cui_list
+			and not (c_x)-[]->(c2)
+	  return {
+		source_cui: c.cui,
+		rel_type: type(r),
+		rel_freq: r.freq,
+		rel_min_pyear: r.min_pyear,
+		stys: labels(c2),
+		arg_inst_freq: c2.arg_inst_freq,
+		arg_rel_freq: c2.arg_rel_freq,
+		cui: c2.cui, 
+		min_pyear: c2.min_pyear,
+		name: c2.name,
+		obj_inst_freq: c2.obj_inst_freq,
+		obj_rel_freq: c2.obj_rel_freq,
+		sub_inst_freq: c2.sub_inst_freq,
+		sub_rel_freq: c2.sub_rel_freq
+	  }
+	  skip $offset
+	  limit $limit
+	  """
+  )	
+
+RelatedConceptsYbyXZCuiList(x_cui_list: [String!]!, z_cui_list: [String!]!, offset: Int = 0, limit: Int = 10): [RelatedConceptY] @cypher(
+	statement: """
+	  match (c_x:Concept)-[r2]->(c:Concept)-[r]->(c2:Concept) 
+	  where c_x.cui in $x_cui_list
+	  		and c2.cui in $z_cui_list
+	  return {
+		x_cui: c_x.cui,
+		xy_rel_type: type(r2),
+		xy_rel_freq: r2.freq,
+		xy_rel_min_pyear: r2.min_pyear,
+		z_cui: c2.cui,
+		yz_rel_type: type(r),
+		yz_rel_freq: r.freq,
+		yz_rel_min_pyear: r.min_pyear,	
+		stys: labels(c),
+		arg_inst_freq: c.arg_inst_freq,
+		arg_rel_freq: c.arg_rel_freq,
+		cui: c.cui, 
+		min_pyear: c.min_pyear,
+		name: c.name,
+		obj_inst_freq: c.obj_inst_freq,
+		obj_rel_freq: c.obj_rel_freq,
+		sub_inst_freq: c.sub_inst_freq,
+		sub_rel_freq: c.sub_rel_freq
+	  }
+	  skip $offset
+	  limit $limit
+	  """
+  )	
+
+}

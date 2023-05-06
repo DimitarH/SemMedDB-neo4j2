@@ -1,0 +1,373 @@
+<style type="text/css" media="screen">
+/*
+.nodes-image {
+	margin:-100;
+}
+*/	
+@import url("//maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css");
+
+.imageblock .content img, .image img {max-width: 900px;max-height: 300px;}
+.deck h3, .deck h4 {display: block !important;margin-bottom:8px;margin-top:5px;}
+.listingblock {margin:8px;}
+.pull-bottom {position:relative;bottom:1em;}
+.admonitionblock td.icon [class^="fa icon-"]{font-size:2.5em;text-shadow:1px 1px 2px rgba(0,0,0,.5);cursor:default}
+.admonitionblock td.icon .icon-note:before{content:"\f05a";color:#19407c}
+.admonitionblock td.icon .icon-tip:before{content:"\f0eb";text-shadow:1px 1px 2px rgba(155,155,0,.8);color:#111}
+.admonitionblock td.icon .icon-warning:before{content:"\f071";color:#bf6900}
+.admonitionblock td.icon .icon-caution:before{content:"\f06d";color:#bf3400}
+.admonitionblock td.icon .icon-important:before{content:"\f06a";color:#bf0000}
+.admonitionblock.note.speaker { display:none; }
+</style>
+<style type="text/css" media="screen">
+/* #editor.maximize-editor .CodeMirror-code { font-size:24px; line-height:26px; } */
+</style>
+<article class="guide" ng-controller="AdLibDataController">
+  <carousel class="deck container-fluid">
+    <!--slide class="row-fluid">
+      <div class="col-sm-3">
+        <h3>The graph data model for SemMedDB31</h3>
+        <p class="lead">Information</p>
+			<!dl>
+				
+				
+				
+				
+				
+			</dl>
+		</div>
+      <div class="col-sm-9">
+        <figure>
+          <img style="width:300px" src=""/>
+        </figure>
+      </div>
+    </slide-->
+    
+
+
+<slide class="row-fluid">
+  <div class="col-sm-12">
+    <h3>The graph data model for SemMedDB31</h3>
+    <br/>
+    <div>
+      <div class="paragraph">
+<p>A Neo4j graph database contains nodes and relations between the nodes. Both the nodes and relations can have properties/attributes. Here the node types (labels) and relations used in the SemMedDB31 graph data model are described.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="https://i.imgur.com/hXaShYl.png" alt="hXaShYl">
+</div>
+</div>
+	</div>
+  </div>
+</slide>
+
+
+
+<slide class="row-fluid">
+  <div class="col-sm-12">
+    <h3>Graph schema</h3>
+    <br/>
+    <div>
+      
+
+
+   <h4>Node types (labels)</h4>
+   <div class="paragraph">
+<p>In Neo4j, labels can be assigned to nodes as a way to designate the node type. More than one label can be assigned to a node. These node labels are used in the SemMedDB31 graph data model:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Citation. Corresponds to a line in the CITATION table in the MySQL SemMedDB31 distribution.</p>
+</li>
+<li>
+<p>Sentence. Corresponds to a line in the SENTENCE table in the MySQL distribution.</p>
+</li>
+<li>
+<p>Instance. Means “semantic relation instance” and corresponds to a subset of a line produced by joining the PREDICATE and PREDICATE_AUX tables in the MySQL distribution. Some of the data is stored as properties of the relations: Extracted_From, Inst_Subject, and Inst_Object (for more information see below).</p>
+</li>
+<li>
+<p>Concept. UMLS concepts that represent the arguments of both semantic relation instances and aggregated semantic relations. The nodes with label “Concept” also have at least one additional label for the corresponding abbreviated UMLS semantic type (e.g. “phsu”, or “dsyn”).</p>
+</li>
+<li>
+<p>Entity. Corresponds to the ENTITY table in the MySQL distribution.</p>
+</li>
+</ul>
+</div>
+
+
+
+   <h4>Relations</h4>
+   <div class="paragraph">
+<p>These are the relations used in the SemMedDB31 graph data model:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>IS_IN - a relation between a sentence and a citation.  In Cypher: (sent:Sentence)-[:IS_IN]&#8594;(cit:Citation). This is only the relation specification part of a Cypher query, not a complete query. For complete queries, see below.</p>
+</li>
+<li>
+<p>Extracted_From - a relation between a predication instance and a sentence. In Cypher: (inst:Instance)-[:Extracted_From]&#8594;(sent:Sentence).</p>
+</li>
+<li>
+<p>Inst_Subject - A relation between an instance and the concept which is the subject of that Instance.</p>
+</li>
+<li>
+<p>Inst_Object - A relation between an instance and the concept which is the object of that Instance. In Cypher: (sub:Concept)&#8592;[r_sub:Inst_Subject]-(inst:Instance)-[r_obj:Inst_Object]&#8594;(obj:Concept)</p>
+</li>
+<li>
+<p>All the SemRep semantic relations (predicates) e.g. INHIBITS, TREATS, &#8230;&#8203; Aggregated relations between Concept nodes. For example, there is only one INHIBITS relation between a particular Concept1 and Concept2, but there can be many instances of that relation (Instance nodes). The instances basically represent a hyper-edge (a relation between more than two nodes - in this case, a relation between the subject, the object, and the sentence from which the instance is extracted). However, since Neo4j supports only binary relations, the most common approach to hyper-edges is to represent them as nodes with links to as many other nodes as necessary.</p>
+</li>
+</ul>
+</div>
+	</div>
+  </div>
+</slide>
+
+
+
+<slide class="row-fluid">
+  <div class="col-sm-12">
+    <h3>Example Cypher queries</h3>
+    <br/>
+    <div>
+      <div class="paragraph">
+<p>Here we show a few typical Cypher queries that query the SemMedDB graph database. Cypher is a query language used in Neo4j. For general Neo4j Cypher help, please see the Neo4j Cypher documentation.</p>
+</div>
+<div class="paragraph">
+<p>Find any 20 Citations (nodes with label Citation):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->match (cit:Citation)
+return cit
+limit 20;<!--/code--></pre>
+</div>
+</div>
+<div class="olist lowerroman">
+<ol class="lowerroman" type="i">
+<li>
+<p>where pmid = "1" ("pmid" is varchar in mySQL version of SemMedDB):</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->match (cit:Citation)
+where cit.pmid="1"
+return cit;<!--/code--></pre>
+</div>
+</div>
+<div class="olist lowerroman">
+<ol class="lowerroman" type="i">
+<li>
+<p>where publication year is 1990:</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->match (cit:Citation)
+where cit.pyear=1990
+return cit
+limit 20;<!--/code--></pre>
+</div>
+</div>
+<div class="olist lowerroman">
+<ol class="lowerroman" type="i">
+<li>
+<p>another way to specify conditions on a node property (the same query as above):</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->match (cit:Citation {pyear: 1990})
+return cit
+limit 20;<!--/code--></pre>
+</div>
+</div>
+<div class="olist lowerroman">
+<ol class="lowerroman" type="i">
+<li>
+<p>also find and return the sentences from the citations found above:</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->match (cit:Citation {pyear: 1990})&lt;-[r_in:IS_IN]-(sent:Sentence)
+return cit,r_in,sent
+limit 20;<!--/code--></pre>
+</div>
+</div>
+<div class="olist lowerroman">
+<ol class="lowerroman" type="i">
+<li>
+<p>also find and return the predicate instances from the sentences above:</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->match (cit:Citation {pyear: 1990})&lt;-[r_in:IS_IN]-(sent:Sentence)&lt;-[r_extr:Extracted_From]-(inst:Instance)
+return cit,r_in,sent,r_extr,inst
+limit 20;<!--/code--></pre>
+</div>
+</div>
+<div class="olist lowerroman">
+<ol class="lowerroman" type="i">
+<li>
+<p>also find the subjects and objects of the instances. Some relations (e.g. r_sub, r_obj also have properties).</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->match (cit:Citation {pyear: 1990})&lt;-[r_in:IS_IN]-(sent:Sentence)&lt;-[r_extr:Extracted_From]-(inst:Instance),
+      (sub:Concept)&lt;-[r_sub:Inst_Subject]-(inst)-[r_obj:Inst_Object]-&gt;(obj:Concept)
+return cit,r_in,sent,r_extr,inst,r_sub,sub,r_obj,obj
+limit 20;<!--/code--></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You do not have to go from Citation to Concept. You can start anywhere. For example, for some Instances, show the subjects and the objects:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->match (sub:Concept)&lt;-[r_sub:Inst_Subject]-(inst:Instance)-[r_obj:Inst_Object]-&gt;(obj:Concept)
+return inst,r_sub,sub,r_obj,obj
+limit 20;<!--/code--></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For some aggregated predications (direct relations between two Concept nodes), show the corresponding predication instances:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->match (sub:Concept)-[rel]-&gt;(obj:Concept),
+      (sub)&lt;-[r_sub:Inst_Subject]-(inst:Instance)-[r_obj:Inst_Object]-&gt;(obj)
+where inst.predicate=type(rel)
+return rel,type(rel),inst,r_sub,sub,r_obj,obj
+limit 20;<!--/code--></pre>
+</div>
+</div>
+<div class="olist lowerroman">
+<ol class="lowerroman" type="i">
+<li>
+<p>more specific than above. Here we are interested in INHIBITS relations where a phsu (pharmacological substance) INHIBITS a gngm (gene or genome):</p>
+</li>
+</ol>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->match (sub:Concept:phsu)-[rel:INHIBITS]-&gt;(obj:Concept:gngm),
+      (sub)&lt;-[r_sub:Inst_Subject]-(inst:Instance)-[r_obj:Inst_Object]-&gt;(obj)
+where inst.predicate=type(rel)
+return rel,type(rel),inst,r_sub,sub,r_obj,obj
+limit 20;<!--/code--></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Currently a most generic query returning linked Citation to Sentence to Instance to (Subject and Object), and corresponding aggregated semantic relations:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->match (c:Citation)&lt;-[r_in:IS_IN]-(s:Sentence)&lt;-[r_extr:Extracted_From]-(i:Instance)-[r_sub:Inst_Subject]-&gt;(sub:Concept),
+      (i)-[r_obj:Inst_Object]-&gt;(obj:Concept), (sub)-[rel]-&gt;(obj)
+return c,r_in,s,r_extr,i,r_sub,sub,r_obj,obj, rel
+limit 100;<!--/code--></pre>
+</div>
+</div>
+	</div>
+  </div>
+</slide>
+
+
+
+<slide class="row-fluid">
+  <div class="col-sm-12">
+    <h3>Creating constraints and indexes</h3>
+    <br/>
+    <div>
+      <div class="paragraph">
+<p>In Neo4j, indexes are automatically created for each node label and relation type. But, based on the intended use of the graph database, some additional constraints and indexes might need to be manually created to speed up Cypher queries and other operations. This is especially true for queries that reference node and/or relation attributes. In the SemMedDB31 distribution as a Neo4j dump file, two full-text indexes are automatically created. When using the delimited text files, these indexes should be created manually. These indexes are for illustrational purposes and might not be appropriate for every application scenario:</p>
+</div>
+<div class="paragraph">
+<p>In Neo4j, create a full-text index on nodes with label "Concept" on attribute "name"</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->CALL db.index.fulltext.createNodeIndex("Concept",["Concept"],["name"]);<!--/code--></pre>
+</div>
+</div>
+
+
+
+   <h4>Example usage:</h4>
+   <div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->CALL db.index.fulltext.queryNodes("Concept", "Surface") YIELD node, score;<!--/code--></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In Neo4j, create full-text index on nodes with label "Sentence" on attributes "sentence","type","normalized_section_header","sentence_header"</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->CALL db.index.fulltext.createNodeIndex("Sentence",["Sentence"],["sentence","type","normalized_section_header","sentence_header"]);<!--/code--></pre>
+</div>
+</div>
+
+
+
+   <h4>Example usage:</h4>
+   <div class="paragraph">
+<p>Search for "sclerosis" anywhere in a "Sentence" node</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->CALL db.index.fulltext.queryNodes("Sentence","sclerosis")
+YIELD node, score
+return node.sentence,score;<!--/code--></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Search for "sclerosis" only in the text of a sentence</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->CALL db.index.fulltext.queryNodes("Sentence","sentence:sclerosis")
+YIELD node, score
+return node.sentence,score;<!--/code--></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Search for "sclerosis" in the text of title sentences only</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->CALL db.index.fulltext.queryNodes("Sentence","sentence:sclerosis AND type:TI")
+YIELD node, score
+return node.sentence,score;<!--/code--></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Search for "sclerosis" in the text of abstract sentences only</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre mode="cypher"  class="highlight pre-scrollable programlisting cm-s-neo code runnable standalone-example ng-binding" data-lang="cypher" lang="cypher"><!--code class="cypher language-cypher"-->CALL db.index.fulltext.queryNodes("Sentence","sentence:sclerosis AND type:AB")
+YIELD node, score
+return node.sentence,score;<!--/code--></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The graph data model for SemMedDB31
+A Neo4j graph database contains nodes and relations between the nodes. Both the nodes and relations can have properties/attributes. Here the node types (labels) and relations used in the SemMedDB31 graph data model are described.</p>
+</div>
+	</div>
+  </div>
+</slide>
+  </carousel>
+</article>
